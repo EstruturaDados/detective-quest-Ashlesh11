@@ -1,11 +1,8 @@
-#include <stdio.h>
-
 // Desafio Detective Quest
 // Tema 4 - Árvores e Tabela Hash
 // Este código inicial serve como base para o desenvolvimento das estruturas de navegação, pistas e suspeitos.
 // Use as instruções de cada região para desenvolver o sistema completo com árvore binária, árvore de busca e tabela hash.
 
-int main() {
 
     // 🌱 Nível Novato: Mapa da Mansão com Árvore Binária
     //
@@ -41,6 +38,146 @@ int main() {
     // - Para hashing simples, pode usar soma dos valores ASCII do nome ou primeira letra.
     // - Em caso de colisão, use lista encadeada para tratar.
     // - Modularize com funções como inicializarHash(), buscarSuspeito(), listarAssociacoes().
+
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <ctype.h>
+
+#define MAX_NAME 64
+#define MAX_PATH 128
+
+// Estrutura de um nó (sala) da árvore binária
+typedef struct Sala {
+    char nome[MAX_NAME];
+    struct Sala *esq;
+    struct Sala *dir;
+} Sala;
+
+// Cria dinamicamente uma sala com nome e ponteiros para sub-salas
+Sala* criarSala(const char *nome, Sala *esq, Sala *dir) {
+    Sala *s = (Sala*) malloc(sizeof(Sala));
+    if (!s) {
+        fprintf(stderr, "Erro: memória insuficiente\n");
+        exit(EXIT_FAILURE);
+    }
+    strncpy(s->nome, nome, MAX_NAME-1);
+    s->nome[MAX_NAME-1] = '\0';
+    s->esq = esq;
+    s->dir = dir;
+    return s;
+}
+
+// Libera memória da árvore (pós-ordem)
+void liberarArvore(Sala *r) {
+    if (!r) return;
+    liberarArvore(r->esq);
+    liberarArvore(r->dir);
+    free(r);
+}
+
+// Lê uma opção do usuário e retorna o primeiro caractere não-branco em minúscula
+char lerOpcao() {
+    char buf[32];
+    if (!fgets(buf, sizeof(buf), stdin)) return 's';
+    for (int i = 0; buf[i] != '\0'; ++i) {
+        if (!isspace((unsigned char)buf[i])) {
+            return (char)tolower((unsigned char)buf[i]);
+        }
+    }
+    return 's';
+}
+
+// Explora interativamente as salas a partir da raiz
+void explorarSalas(Sala *raiz) {
+    if (!raiz) return;
+    Sala *atual = raiz;
+    Sala *caminho[MAX_PATH];
+    int profundidade = 0;
+
+    while (1) {
+        // adiciona ao caminho visitado
+        if (profundidade < MAX_PATH) caminho[profundidade++] = atual;
+
+        printf("\nVocê está na sala: %s\n", atual->nome);
+
+        // Se for nó-folha, fim do caminho
+        if (!atual->esq && !atual->dir) {
+            printf("Você alcançou uma sala-folha. Fim do caminho.\n");
+            break;
+        }
+
+        // Mostra opções disponíveis
+        printf("Escolha uma direção:\n");
+        if (atual->esq) printf("  (e) esquerda -> %s\n", atual->esq->nome);
+        else printf("  (e) esquerda -> (não disponível)\n");
+        if (atual->dir) printf("  (d) direita  -> %s\n", atual->dir->nome);
+        else printf("  (d) direita  -> (não disponível)\n");
+        printf("  (s) sair da exploração\n");
+        printf("Opção: ");
+
+        char opt = lerOpcao();
+
+        if (opt == 's') {
+            printf("Exploração encerrada pelo jogador.\n");
+            break;
+        } else if (opt == 'e') {
+            if (atual->esq) {
+                atual = atual->esq;
+                continue;
+            } else {
+                printf("Não há sala à esquerda. Tente outra opção.\n");
+                // remove a entrada repetida caso tenha preenchido caminho (mantém sem duplicar)
+                if (profundidade > 0 && caminho[profundidade-1] == atual) profundidade--;
+                continue;
+            }
+        } else if (opt == 'd') {
+            if (atual->dir) {
+                atual = atual->dir;
+                continue;
+            } else {
+                printf("Não há sala à direita. Tente outra opção.\n");
+                if (profundidade > 0 && caminho[profundidade-1] == atual) profundidade--;
+                continue;
+            }
+        } else {
+            printf("Opção inválida. Use 'e', 'd' ou 's'.\n");
+            if (profundidade > 0 && caminho[profundidade-1] == atual) profundidade--;
+            continue;
+        }
+    }
+
+    // Exibe o caminho percorrido
+    printf("\nCaminho percorrido (%d salas):\n", profundidade);
+    for (int i = 0; i < profundidade; ++i) {
+        printf("  %d) %s\n", i+1, caminho[i]->nome);
+    }
+    printf("Fim.\n");
+}
+
+int main(void) {
+    // Monta a árvore da mansão
+
+    Sala *biblioteca = criarSala("Biblioteca", NULL, NULL);
+    Sala *salaEstudo = criarSala("Sala de Estudo", NULL, NULL);
+    Sala *corredor = criarSala("Corredor", biblioteca, salaEstudo);
+
+    Sala *despensa = criarSala("Despensa", NULL, NULL);
+    Sala *copa = criarSala("Copa", NULL, NULL);
+    Sala *cozinha = criarSala("Cozinha", despensa, copa);
+
+    Sala *jardim = criarSala("Jardim", NULL, NULL);
+    Sala *salaEstar = criarSala("Sala de Estar", cozinha, jardim);
+
+    Sala *hall = criarSala("Hall de Entrada", corredor, salaEstar);
+
+    printf("Bem-vindo(a) à Mansão\n");
+    printf("Você começa no: %s\n", hall->nome);
+
+    explorarSalas(hall);
+
+    // libera toda a memória antes de sair
+    liberarArvore(hall);
 
     return 0;
 }
